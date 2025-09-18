@@ -1,0 +1,1288 @@
+---
+title: Final Project
+author: Federica Sfeir 2025512
+date:  |
+  | \textsc{\textbf{\Large Bayesian Modelling a.y. 2024-2025}}
+  | 
+  | M.Sc. in Statistical Methods \& Applications
+  | 
+output:
+  pdf_document:
+    keep_tex: yes
+    toc: no
+  html_document:
+    keep_md: yes
+    theme: united
+header-includes: 
+- \usepackage{transparent}
+- \usepackage[utf8]{inputenx}
+- \usepackage{iwona}
+- \usepackage{tikz}
+- \usepackage{dcolumn}
+- \usepackage{color}
+- \usepackage[italian]{babel}
+- \usepackage{listings}
+- \usepackage{hyperref}
+- \usepackage{setspace}
+- \usepackage{enumitem}
+- \usepackage{tocloft}
+- \usepackage{eso-pic}
+- \usepackage{amsmath}
+- \geometry{verbose,tmargin=4cm,bmargin=2cm,lmargin=2.5cm,rmargin=2.5cm}
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# the default output hook
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  if (!is.null(n <- options$out.lines)) {
+    x = unlist(stringr::str_split(x, '\n'))
+    if (length(x) > n) {
+      # truncate the output
+      x = c(head(x, n), '....\n')
+    }
+    x = paste(x, collapse = '\n') # paste first n lines together
+  }
+  hook_output(x, options)
+})
+```
+
+
+\textsc{\textbf{Introduction}}
+
+The educational outcomes are shaped by a complex interaction of institutional characteristics, student demographics, and socioeconomic factors. In order to understand these dynamics is essential for identifying disparities in higher education and informing policies to enhance student success. 
+There are various measures of academic performance, among which graduation rates are often considered as a key indicator of institutional effectiveness, as they strongly correlate with future economic opportunities and social contributions.
+
+In this project we will analyze the College dataset that offers an opportunity to understand the educational outcomes, offering detailed data on 770 colleges and universities across the US. 
+The primary objective is to analyze graduation rates and examine how institutional factors, such as tuition costs, faculty qualifications, and student-to-faculty ratios, interact with state-level differences to influence student outcomes. Additionally, we assess how individual characteristics, such as enrollment size and the proportion of high-performance students, contribute to this variability.
+
+This study aims to answer the following research question:
+"How do the effects of institutional predictors on graduation rates vary across different states?"
+
+To address this question, we employ a Bayesian mixed-effects model, incorporating state-level random effects to account for unobserved heterogeneity between states. This hierarchical modeling approach enables us to separate the influence of institutional characteristics from broader state-level differences, allowing for a more comprehensive understanding of regional disparities in higher education outcomes. The findings from this analysis will provide valuable insights into how states and institutions can tailor policies to improve student success and equity across diverse educational environments.
+
+\textsc{\textbf{College Dataset}}
+
+The dataset used in this analysis is derived from the 1995 issue of US News and World Report, which provides detailed information on 770 colleges and universities across the United States. This dataset offers valuable insights into the relationship between institutional characteristics, state-level differences, and graduation rates, allowing for a comprehensive evaluation of factors influencing student success.
+
+The dataset includes the following 19 variables:
+
+- **state**: The U.S. state in which the institution is located.
+- **Private**: A binary variable indicating the type of institution (1 = Private, 0 = Public).
+- **Apps**: Number of applications received.
+- **Accept**: Number of applicants accepted.
+- **Enroll**: Number of new students enrolled.
+- **Top10perc**: Percentage of new students who graduated in the top 10% of their high school class.
+- **Top25perc**: Percentage of new students who graduated in the top 25% of their high school class.
+- **F.Undergrad**: Number of full-time undergraduate students.
+- **P.Undergrad**: Number of part-time undergraduate students.
+- **Outstate**: Tuition for out-of-state students (in USD).
+- **Room.Board**: Cost of room and board (in USD).
+- **Books**: Estimated cost of books (in USD).
+- **Personal**: Estimated personal expenses (in USD).
+- **PhD**: Percentage of faculty with PhD degrees.
+- **Terminal**: Percentage of faculty with terminal degrees (highest degree in their field).
+- **S.F.Ratio**: Student-to-faculty ratio.
+- **perc.alumni**: Percentage of alumni who donate to the institution.
+- **Expend**: Instructional expenditure per student (in USD).
+- **Grad.Rate**: Graduation rate of the institution (percentage of students who graduate within a specified time frame).
+
+
+\textsc{Data Cleaning}
+
+In order to prepare the dataset for reliable analysis, we proceed with a data cleaning process.
+First of all, no missing values were found in the dataset. Therefore, no observations were removed or imputed for this reason.
+We identified one observation with an unrealistic **Grad.Rate** greater than 100%. Graduation rates represent percentages and should range between 0 and 100. Thus the observation for Cazenovia College, which had a **Grad.Rate** exceeding 100%, was removed to maintain the validity of the analysis.
+The continuous variables such as **Outstate** (tuition for out-of-state students), **Expend** (instructional expenditure per student), **S.F.Ratio** (student-to-faculty ratio), and others were standardized. This ensures all variables are on a comparable scale, which is particularly useful for Bayesian modeling and aids in model convergence.
+The **Private** variable, which indicates whether a college is private or public, was encoded as a binary variable (1 for private, 0 for public) to facilitate its inclusion.
+After these steps, the dataset was left with 769 observations.
+
+
+\textsc{\textbf{Descriptive Statistics}}
+
+In this section we provide an overview of the dataset used in this analysis, through a descriptive analysis, highlighting key patterns and relationships between variables. 
+
+By examining the distribution of graduation rates and their association with factors such as institutional type (private vs. public), tuition costs, instructional expenditures, and student-to-faculty ratios, this section lays the foundation for understanding the variability in college performance. These insights will guide the subsequent modeling efforts to explore the contributions of institutional characteristics to graduation outcomes.
+
+The first histogram displays the distribution of graduation rates across colleges and universities in the dataset. The distribution of graduation rates appears slightly right-skewed, with a peak around 60-70\%. This suggests that most colleges have graduation rates within this range, representing the majority of institutions. The mean graduation rate is 65.4\%, and the range is from 10\% to 100\%. 
+Few colleges achieve very low or very high graduation rates, indicating a clustering of institutions around the median. This initial analysis provides insights into the overall performance of colleges and sets the stage for further exploration of contributing factors.
+
+\begin{center} 
+\includegraphics[width=14cm]{/Users/federicasfeir/Desktop/im1.pdf} 
+\end{center}
+
+The following boxplot compares graduation rates between public and private colleges in the dataset.
+We observe that Public colleges tend to have a wider spread of graduation rates, with many institutions clustered around lower rates. 
+While, Private colleges show a higher median graduation rate and a more compact distribution, indicating less variability compared to public colleges.
+
+\begin{center} 
+\includegraphics[width=9cm]{/Users/federicasfeir/Desktop/im2.pdf} 
+\end{center}
+
+However, it is essential to note that public colleges make up a smaller proportion of the dataset compared to private colleges (approximately 35.5\% of the total). This imbalance in representation could influence the overall descriptive statistics and lead to conclusions that reflect private colleges more strongly than public colleges.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Type (0 = Public, 1 = Private)} & \textbf{Mean Graduation Rate (\%)} & \textbf{Proportion} \\ \hline
+0                                       & 56.04245                           & 0.2731959           \\ \hline
+1                                       & 68.91135                           & 0.7268041           \\ \hline
+\end{tabular}
+\caption{Mean Graduation Rate and Proportion by College Type}
+\label{tab:grad_rate}
+\end{table}
+
+The table presents the mean graduation rate and the proportion of colleges by type (public or private). As we can observe, the Private colleges (Type = 1) exhibit a higher average graduation rate of 68.91% and make up the majority of the sample (72.68\%). While the Public colleges (Type = 0) have a lower average graduation rate of 56.04\%, accounting for a smaller proportion of the sample (27.32\%).
+These results suggest a potential disparity in graduation outcomes between public and private colleges. This could reflect differences in institutional characteristics, resources, or the socio-economic backgrounds of students.
+
+We can also consider the heatmap, which provides a clear and visually appealing representation of the relationships between the numeric variables in the dataset. 
+The heatmap highlights strong positive correlations (dark blue squares), such as:
+**Grad.Rate** and **Top10perc**, so Colleges with a higher percentage of top-performing students tend to have better graduation rates.
+**Expend** and **Grad.Rate**, thus institutions that spend more on instructional expenditure generally achieve higher graduation rates.
+**Top10perc** and **Top25perc**, these variables are highly correlated, as expected, since both represent academic quality measures of incoming students.
+
+\begin{center} 
+\includegraphics[width=10cm]{/Users/federicasfeir/Desktop/im3.pdf} 
+\end{center}
+
+While the dark red squares indicate strong negative correlations, including:
+**S.F.Ratio** and **Grad.Rate**, so we can say that Colleges with lower student-to-faculty ratios (smaller classes) tend to have higher graduation rates, reinforcing the importance of personalized instruction.
+
+The light-colored squares (white or pale shades) show weak or negligible correlations. For example in **Books** and **Grad.Rate** there’s little to no relationship between the cost of books and graduation rates.
+Also in **Personal Expenses** and most other variables do not strongly correlate with institutional or performance metrics.
+
+The hierarchical ordering groups variables with similar patterns of correlation, making it easier to identify clusters of related variables. In fact academic quality measures (**Top10perc** and **Top25perc**) are closely grouped with **Grad.Rate**, reflecting their shared impact on performance.
+We can also observe that institutional spending metrics (**Expend**, **Room.Board**) cluster together, suggesting they are related in terms of institutional resource allocation.
+
+We represented the states based on graduation rates to visually capture the geographic distribution of educational outcomes across the U.S. This map helps to identify regional trends, highlighting states with higher or lower graduation rates.
+
+\begin{center} 
+\includegraphics[width=10cm]{/Users/federicasfeir/Desktop/geo.pdf} 
+\end{center}
+
+We note that the Northeastern states (such as Massachusetts, Connecticut, and Rhode Island) exhibit higher graduation rates (darker red), indicating better academic performance in institutions within these states.
+Southern and Midwestern states tend to have lower graduation rates (shades of orange and yellow), suggesting potential structural or socioeconomic challenges affecting degree completion.
+
+However states such as Alaska and parts of the Southwest display lower graduation rates, possibly due to demographic factors, access to quality higher education, or economic constraints. In this dataset there are no colleges in Nevada so this state appears gray.
+In general, higher graduation rates are concentrated along the East Coast and parts of the West Coast, while central and southern states show comparatively lower rates.
+
+The below table displays the top 10 states with the highest number of colleges in the dataset. New York and Pennsylvania lead the list with 64 and 60 institutions, followed by Ohio (34), Illinois (33), and Virginia (33).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|}
+\hline
+\textbf{State} & \textbf{Number of Colleges} \\
+\hline
+New York & 64 \\
+Pennsylvania & 60 \\
+Ohio & 34 \\
+Illinois & 33 \\
+Virginia & 33 \\
+Massachusetts & 32 \\
+North Carolina & 31 \\
+California & 30 \\
+Texas & 30 \\
+Indiana & 27 \\
+\hline
+\end{tabular}
+\caption{Top 10 States with the Highest Number of Colleges}
+\label{tab:top_states}
+\end{table}
+
+States with a higher density of academic institutions may experience greater competition among universities, potentially influencing factors such as admission rates, tuition costs, and funding.
+We note that California and Texas, despite being among the most populous states, have a relatively lower number of private colleges, suggesting that a significant portion of higher education may be provided by public universities.
+While Massachusetts, known for elite institutions like Harvard and MIT, appears among the top 10, reflecting its historical significance in higher education.
+This distribution suggests that the state variable could have a significant impact on university characteristics and graduation rates, justifying its inclusion as a random effect in the statistical model.
+
+\begin{center} 
+\includegraphics[width=9cm]{/Users/federicasfeir/Desktop/barchart.pdf} 
+\end{center}
+
+
+\textsc{\textbf{Bayesian Mixed-Effects Model Specification}}
+
+The goal of this project is to develop and specify Bayesian mixed-effects models to analyze the variability in graduation rates while evaluating the effects of institutional and state-level factors. By employing a hierarchical structure, these models account for both institutional-level predictors (e.g., instructional expenditure, student-to-faculty ratio, enrollment size) and the clustering of institutions within states. This approach enables us to partition the variability in graduation rates across institutions and states, allowing us to identify key factors influencing institutional performance while capturing geographical differences.
+
+The Bayesian mixed-effects models are an extension of simple linear models to allow both fixed and random effects, and are particularly used when there is non independence in the data, such as arises from a hierarchical structure.
+The core of mixed models is that they incorporate fixed and random effects. In this framework:
+
+- Fixed effects capture the influence of institutional characteristics such as tuition costs, alumni donations, and faculty qualifications on graduation rates.
+
+- Random effects account for unobserved variability at the state level, recognizing that graduation rates may systematically differ across states due to regional policies, funding structures, or socioeconomic conditions.
+
+To ensure the suitability of regression modeling and compliance with the assumptions of the Bayesian framework, the dependent variable **Grad.Rate** was transformed into its logit form. This transformation is particularly relevant as **Grad.Rate** was originally expressed as a percentage ranging between 0 and 100, which makes it bounded and unsuitable for direct modeling with a normal likelihood. The Graduation rates were first converted from percentages to proportions by dividing by 100, then the logit transformation was applied: 
+\[
+\text{Logit}(y) = \log\left(\frac{y}{1-y}\right)
+\]
+This transforms the proportion $y$ into a variable that is unbounded and continuous, ranging from ($-\infty,+\infty$).The logit transformation ensures that the variable maps onto the real number line, removing the boundary constraints while preserving its interpretability in terms of probabilities. The transformation stabilizes variance and makes the data more suitable for linear mixed-effects models and Bayesian hierarchical modeling.
+After transformation, the coefficients in the model ($\beta_{1}, \beta_{2}, ...$) represent the expected change in the log-odds of graduation rates for a one-unit increase in the corresponding predictor, holding all other predictors constant.
+
+\begin{center} 
+\includegraphics[width=14cm]{/Users/federicasfeir/Desktop/im1log.pdf} 
+\end{center}
+
+The general structure of a Bayesian mixed-effects model for nested data, as applied to the College dataset, is the following:
+\[
+y_{ij} = \beta_0 + \sum_{k=1}^K \beta_k x_{ijk} + u_j + \epsilon_{ij},
+\]
+where the components of the model are defined as follows:
+
+- \(y_{ij}\): The observed outcome (graduation rate) for institution \(i\) in state \(j\). It is assumed to follow a normal distribution with mean \(\mu_{ij}\) and variance \(\sigma^2\):
+     \[
+     \text{Grad.Rate}_{ij} \sim \mathcal{N}(\mu_{ij}, \sigma^2),
+     \]
+     where the mean structure is given by:
+     \[
+     \mu_{ij} = \beta_0 + \sum_{k=1}^K \beta_k x_{ijk} + u_j.
+     \]
+
+- \(\beta_k\): Represent the fixed-effects coefficients for institutional-level predictors \(x_{ijk}\), such  as `Enroll` ( Number of new students enrolled ), `Outstate` ( Out-of-state tuition ), `S.F.Ratio` ( Student-to-faculty ratio ). The fixed effects are assigned weakly informative priors:
+     \[
+     \beta_k \sim \mathcal{N}(0, \tau_\beta),
+     \]
+     where \(\tau_\beta\) is a small precision value to reflect a weakly informative prior.
+
+- \(u_j\): random effects represent state-level deviations from the overall mean graduation rate, capturing unobserved variability across states:
+     \[
+     u_j \sim \mathcal{N}(0, \sigma_u^2),
+     \]
+     where \(\sigma_u^2\) represents the variance of state-level effects. This allows the model to        account for differences in educational policies, funding, and demographic factors that vary by
+     state.
+
+- \(\epsilon_{ij}\): residual errors, represent the variability within colleges that is not explained by the predictors or random effects:
+     \[
+     \epsilon_{ij} \sim \mathcal{N}(0, \sigma^2).
+     \]
+
+-  \(\sigma^2\) and \(\sigma_u^2\): variance components, modeled using weakly informative priors:
+     \[
+     \sigma^2 \sim \text{InverseGamma}(a, b),  \quad \sigma_u^2 \sim \text{InverseGamma}(a, b),
+     \]
+     where \(a\) and \(b\) are hyperparameters representing prior beliefs about the variances.
+
+By incorporating both fixed and random effects, the Bayesian framework allows us to quantify uncertainty and capture the hierarchical structure of the data, ensuring that the analysis accounts for institutional and state-level variability in graduation rates.
+
+\textsc{\textbf{Model Formulation for the College Dataset}}
+
+The following four models are specified to analyze the variability in graduation rates (\(y_{ij}\) = \(\text{Grade.Rate}_{ij}\)) and evaluate the effects of institutional characteristics. These models progressively incorporate fixed effects, random effects, and predictors to assess their contributions to explaining the observed variability.
+
+1. Null Model (random intercept only): The null model includes only a random intercept for states, with no predictors. This model serves as a baseline to partition the total variability in graduation rates into between-state variability (differences across states due to educational policies, funding, and demographic factors) and within-state variability (differences among institutions within the same state). The model is defined as:
+\[
+\text{Grad.Rate.Logit}_{ij} = \beta_0 + u_j + \epsilon_{ij},
+\]
+where: \(\beta_0\) is the overall mean graduation rate; \(u_j \sim \mathcal{N}(0, \sigma_u^2)\) the random intercept for state \(j\), capturing unobserved heterogeneity at the state level; \(\epsilon_{ij} \sim \mathcal{N}(0, \sigma^2)\) the residual variability within institutions.
+
+2. Random Effects with Key Predictors: This model incorporates key institutional level predictors, including the number of new students enrolled (Enroll), out-of-state tuition (Outstate), and student-to-faculty ratio (S.F.Ratio).
+These variables provide a foundation for exploring the relationships between institutional characteristics and graduation rates before extending the model to include additional predictors.
+This allows us to evaluate how much of the within-group variability can be explained by these predictors:
+\[
+\text{Grad.Rate.Logit}_{ij} = \beta_0 + \beta_1 \cdot \text{Enroll}_{ij} + \beta_2 \cdot \text{Outstate}_{ij} + \beta_3 \cdot \text{S.F.Ratio}_{ij} + u_j + \epsilon_{ij},
+\]
+where: \(\beta_1\), \(\beta_2\), \(\beta_3\) represent the fixed effects for predictors, \(u_j \sim \mathcal{N}(0, \sigma_u^2)\) is the random intercept for states, \(\epsilon_{ij} \sim \mathcal{N}(0, \sigma^2)\) is the residual variability within institutions.
+
+
+3. Full Random Effects Model: This model extends the previous model by including additional predictors to account for institutional characteristics, such as:
+- Percentage of alumni who donate to the institution (**perc.alumni**), which highlights its role as a proxy for alumni satisfaction, institutional reputation, and potential resource availability.
+- Top 10\% student (**Top10perc**) reflects the quality or preparedness of incoming students, which could strongly influence graduation rates.
+- Percentage of faculty with terminal degrees (**Terminal**), which reflects institutional scale and may impact resource allocation and academic outcomes. 
+$$
+\begin{aligned}
+\text{Grad.Rate.Logit}_{ij} &= \beta_0 + \beta_1 \cdot \text{Enroll}_{ij} + \beta_2 \cdot \text{Outstate}_{ij} + \beta_3 \cdot \text{S.F.Ratio}_{ij} + \\
+&\beta_4 \cdot \text{perc.alumni}_{ij} + \beta_5 \cdot \text{Top10perc}_{ij} + \beta_6 \cdot \text{Terminal}_{ij} + u_j + \beta_7 \cdot \text{Private}_{ij} + \epsilon_{ij}.
+\end{aligned}
+$$
+where the fixed effects (\(\beta_4\), \(\beta_5\), \(\beta_6\)) represent the contributions of these additional predictors.
+
+4. Fixed Effects Only (No Random Effects): this model is specified without random intercepts, in order to assess the importance of random effects. The goal of this model is to assess whether including random effects significantly improves model performance:
+$$
+\begin{aligned}
+\text{Grad.Rate.Logit}_{ij} &= \beta_0 + \beta_1 \cdot \text{Enroll}_{ij} + \beta_2 \cdot \text{Outstate}_{ij} + \beta_3 \cdot \text{S.F.Ratio}_{ij} + \\
+&\beta_4 \cdot \text{perc.alumni}_{ij} + \beta_5 \cdot \text{Top10perc}_{ij} + \beta_6 \cdot \text{Terminal}_{ij} + \beta_7 \cdot \text{Private}_{ij} + \epsilon_{ij}.
+\end{aligned}
+$$
+where \(\epsilon_{ij} \sim \mathcal{N}(0, \sigma^2)\) is the residual variability.
+
+
+
+\textsc{\textbf{Assessing Model Fit: DIC Comparison}}
+
+In order to choose the best model, we compared the models using the Deviance Information Criterion (DIC), where lower DIC values indicate a better fit to the data. This comparison allows us to evaluate the result of incorporating random effects and additional predictors on model performance. 
+\[
+\text{DIC} = \mathbb{E}[D(\theta) | y] + p_V
+\]
+where : $\mathbb{E}[D(\theta) | y]$ is the posterior expectation of the deviance and $p_V = \frac{1}{2} \text{Var}[D(\theta) | y]$ is the penality variance.
+
+Observing the results, summarized in the table below, we note that Model 3 provides the best fit to the data, as evidenced by its lowest DIC value (2141.901). This model includes all predictors and random effects, suggesting that fixed effects alone do not sufficiently explain the variability of graduation rates without taking into account differences at the level of states. However, Model 4, which excludes random effects, has a slightly higher DIC value (2163.456). The small difference in DIC between these models indicates that random effects provide an additional explanatory power not very large when all predictors are included.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Model} & \textbf{DIC} \\
+\hline
+Model 1 & 2412.143 \\
+Model 2 & 2245.458 \\
+Model 3 & 2141.901 \\
+Model 4 & 2163.456 \\
+\hline
+\end{tabular}
+\caption{DIC Values}
+\end{table}
+
+Models 1 and 2 show significantly higher DIC values (2412.143 and 2245.458, respectively), highlighting their limited ability to capture the variability in graduation rates compared to the more comprehensive models.
+
+These results indicate that incorporating a full set of predictors significantly improves model performance. As a result, we selected Model 3 for further interpretation and diagnostic analysis.
+
+
+
+\textsc{\textbf{Results of the Bayesian Fixed-Effects Model (Model 4)}}
+
+The  Bayesian Mixed-Effects Model was implemented in \texttt{JAGS} (Just Another Gibbs Sampler) with MCMC chains run for 10,000 iterations, a burn-in period of 1,000 iterations, and thinning set to 10 to reduce autocorrelation. 
+The results that we obtain are the following:
+
+\begin{verbatim}
+# Inference for Bugs model at "5", fit using jags,
+#  1 chains, each with 10000 iterations (first 1000 discarded), n.thin = 10
+# n.sims = 900 iterations saved. Running time = 4.628 secs
+#           mu.vect sd.vect     2.5%      25%      50%      75%    97.5%
+# beta0       0.610   0.105    0.407    0.543    0.610    0.680    0.808
+# beta1       0.034   0.047   -0.061    0.005    0.032    0.067    0.120
+# beta2       0.186   0.068    0.052    0.144    0.189    0.235    0.307
+# beta3       0.092   0.044    0.007    0.062    0.092    0.120    0.179
+# beta4       0.016   0.004    0.009    0.014    0.016    0.019    0.023
+# beta5       0.409   0.050    0.314    0.378    0.408    0.443    0.504
+# beta6      -0.003   0.003   -0.009   -0.005   -0.003   -0.001    0.003
+# beta7       0.252   0.129    0.005    0.165    0.253    0.338    0.517
+# sigma       0.947   0.026    0.895    0.929    0.948    0.964    0.996
+# sigma_u     0.217   0.062    0.100    0.176    0.214    0.256    0.344
+# deviance 2097.592  11.477 2076.724 2089.885 2097.099 2104.864 2121.447
+
+# DIC info (using the rule: pV = var(deviance)/2)
+# pV = 44.3 and DIC = 2141.9
+# DIC is an estimate of expected predictive error (lower deviance is better).
+\end{verbatim}
+
+- Intercept ( \(\beta_{0}\) = 0.610, 95\% CI: [0.407, 0.808]): The intercept represents the expected log-odds of graduation rates when all predictors are at their mean or reference level. This suggests that colleges with average characteristics across all predictors are expected to have a moderate baseline graduation rate.
+  In terms of proportions, this corresponds to:
+  \[
+   y = \frac{\exp(0.610)}{1 + \exp(0.610)} \approx 64.7\%.
+  \]
+This suggests that the baseline graduation rate for an average institution is around 64.7%.
+
+Considering the key predictors, we get:
+
+- Enrollment size ( \(\beta_{1}\) = 0.034, 95\% CI: [ -0.061, 0.120] ): The credible interval includes zero, indicating no strong evidence that enrollment size significantly affects graduation rates. A one-unit increase in enrollment is associated with a 0.034 increase in the log-odds of graduation rate, or an approximate 3.46\% increase in graduation rate 
+
+- Out-of-State Tuition ( \(\beta_{2}\) = 0.186, 95\% CI: [0.052, 0.307] ): A one-unit increase in out-of-state tuition (e.g., $1,000 increase) is associated with a 0.186 increase in the log-odds of graduation rate, which translates to an approximate 4.6\% increase in graduation rate. 
+The credible interval does not include zero, suggesting a statistically significant positive effect.
+Therefore higher tuition might be associated with better resources, faculty, or student selection processes that improve graduation rates.
+
+- Student-to-Faculty Ratio ( \(\beta_{3}\) = 0.092, 95\% CI: [0.007, 0.179] ): A one-unit increase in the student-to-faculty ratio is associated with a 0.092 increase in the log-odds of graduation rate,or an approximate 2.2\% increase in graduation rate.
+The credible interval does not include zero, suggesting a statistically significant effect.
+Contrary to expectations, a higher student-to-faculty ratio (larger classes) appears to have a small positive effect on graduation rates. This might indicate that institutions with higher faculty-student ratios have efficient academic support systems. 
+  
+- Percentage of alumni who donate to the institution ( \(\beta_{4}\) = 0.016, 95\% CI: [0.009, 0.023] ): A 1% increase in alumni donation rates is associated with a 0.016 increase in the log-odds of graduation rates, translating to an approximate 0.4\% increase in graduation rate. The credible interval does not include zero, making this a significant predictor.
+So institutions with higher alumni engagement tend to have better graduation rates, likely due to stronger financial support, networking opportunities, and institutional reputation.
+
+- Top 10\% students ( \(\beta_{5}\) = 0.409, 95\% CI: [0.314, 0.504] ): A one-unit increase in the proportion of students from the top 10% of their high school class is associated with a 0.409 increase in the log-odds of graduation rates, which translates to an approximate 12.2\% increase in graduation rate. The credible interval does not include zero, making this a highly significant predictor.
+Therefore institutions admitting high-performance students have higher graduation rates, reinforcing the idea that student quality strongly influences academic success.
+
+- Terminal ( \(\beta_{6}\) = -0.003, 95\% CI: [-0.009, 0.003]): A 1% increase in the proportion of faculty with terminal degrees is associated with a 0.003 decrease in the log-odds of graduation rates, which corresponds to an approximate 0.08\% decrease in graduation rate. The credible interval includes zero, meaning this effect is not statistically significant.
+So having a higher percentage of faculty with terminal degrees does not necessarily translate into better graduation rates. 
+
+- Private (\(\beta_{7}\) = 0.252, 95\% CI: [0.005, 0.517]): Being a private institution is associated with an approximate 28.6\% increase in graduation rates compared to public institutions.
+The credible interval barely excludes zero, indicating weak statistical significance.
+Therefore private colleges might offer better academic support, or more financial aid options that slightly improve graduation rates.
+
+The estimated variance components indicate that state-level differences ( \(\sigma_{u}\) = 0.217, 95\% CI: [0.100, 0.344]) explain a moderate portion of the variability in graduation rates, alongside the within-state variability (\(\sigma\) = 0.947, 95% CI: [0.895, 0.996]).
+
+This suggests that while institutional characteristics play a major role in shaping graduation outcomes, there is also notable variation across states, which may reflect differences in state-level policies, funding, or educational infrastructure.
+
+The model fit suggests that this model effectively captures the influence of institutional and student-level characteristics on graduation rates. Overall, the findings emphasize the importance of considering institutional factors, such as out-of-state tuition and alumni engagement, as well as student quality, represented by the percentage of students in the top 10\% of their high school class. 
+These predictors play significant roles in shaping graduation outcomes, highlighting the value of both financial resources and academic excellence in driving institutional success. While the model provides a reasonable explanation of graduation rates, some variability remains unexplained, suggesting the potential contribution of additional unmeasured factors.
+
+
+\textsc{\textbf{Diagnostic}}
+
+In this section we have conducted several diagnostic checks to assess the convergence, the goodness of adaptation and the model hypotheses, to be able to guarantee the validity and reliability of the Bayesian model. 
+
+The application of these diagnostics is essential for interpreting the results and ensuring that the model accurately captures the relationships between the predictors and graduation rates. In this case , since Model 3 has the lowest Deviance Information Criterion (DIC), all diagnostics were performed on this model to assess its performance and robustness.
+
+We examined the convergence of the Markov Chain Monte Carlo (MCMC) chains for the model parameters using the trace plots for the Model 3. These plots illustrate the sampling process for each parameter across iterations. The results are as follows:
+
+-Stable Mixing: The chains appear to be oscillating around a consistent mean value without any visible upward or downward trends. This suggests that the MCMC sampler is exploring the posterior distribution efficiently.
+
+-Good Convergence: There are no major drifts or patterns in the chains, indicating that the Markov chains have likely converged to the stationary distribution.
+
+-No Apparent Autocorrelation: The trace plots do not show extended clustering or adensivity in certain regions of the parameter space, which is a good sign of efficient sampling.
+
+-Burn-in Period: The initial iterations do not exhibit major irregularities, implying that the chosen burn-in period of 1,000 iterations was likely sufficient to remove transient effects.
+
+The trace plots suggest that the MCMC chains for the fixed and random effects have likely reached convergence, supporting the reliability of the posterior estimates. 
+
+\begin{center} 
+\includegraphics[width=14cm]{/Users/federicasfeir/Desktop/trace3.pdf} 
+\end{center}
+
+However, to confirm convergence more rigorously, we can also check the effective sample size (ESS).
+The Effective Sample Size (ESS) measures the number of effectively independent samples obtained from the Markov Chain Monte Carlo (MCMC) process, accounting for potential autocorrelation within the chains. A higher ESS indicates that the chains are mixing well and that the posterior estimates are reliable. 
+
+\begin{verbatim}
+#    beta0    beta1    beta2    beta3    beta4    beta5    beta6    beta7 
+# 900.0000 900.0000 900.0000 900.0000 900.0000 996.6624 900.0000 900.0000 
+# deviance    mu[1] 
+# 900.0000 900.0000
+\end{verbatim}
+
+The majority of parameters, including $\beta_{0}$ to $\beta_{7}$, $\mu[1]$, and deviance, have values very close to 900.
+Given that the total number of retained MCMC samples is 900 (after thinning), this suggests that the chains are well-mixed and exhibit low autocorrelation.
+This is a good sign, as it means the sampler is drawing nearly independent samples, leading to more reliable posterior estimates.
+
+
+\textsc{\textbf{Posterior Predictive}}
+
+Moreover, we did posterior predictive checks to assess how well the model captures the observed data.
+The following graph illustrates the Posterior Predictive distribution for graduation rates (logit-transformed), comparing the observed data distribution (blue histogram) with the posterior predictive distribution (red density curve) generated by the Bayesian model.
+
+\begin{center} 
+\includegraphics[width=12.5cm]{/Users/federicasfeir/Desktop/postpred3.pdf} 
+\end{center}
+
+The posterior predictive distribution closely aligns with the observed data, indicating that the model captures the overall distribution of graduation rates effectively. The general shape and density of the predicted values match the observed data well, suggesting that the model provides a reasonable fit for the central tendencies of the data.
+
+However, there are slight discrepancies at the extreme values. Specifically, in the lower and upper tails of the distribution, the observed data appear to exhibit more variation than the model predicts. This suggests that the model might not fully capture the variability in graduation rates for institutions with particularly low or high values.
+
+In the central range, where most of the data points lie, the posterior predictive distribution closely follows the observed data. This indicates that the model is effective in explaining the most frequent values, reinforcing its ability to capture key institutional characteristics influencing graduation rates.
+
+Overall, the strong alignment between the observed and predicted distributions suggests that the model performs well in predicting graduation rates while accounting for state-level effects. 
+
+
+\textsc{\textbf{Residuals Diagnostic}}
+
+By analyzing residuals, we can identify potential issues such as non-linearity, heteroscedasticity, outliers, or model misspecification, which may affect the validity and reliability of the model's predictions.
+
+\begin{center} 
+\includegraphics[width=14cm]{/Users/federicasfeir/Desktop/Rplotbeta3} 
+\end{center}
+
+In the first plot the residuals are scattered around zero, indicating that the model does not show strong bias in its predictions. The spread of residuals appears relatively consistent across different fitted values, suggesting that the assumption of homoscedasticity is largely satisfied. However, there are some outliers with large positive residuals, particularly at higher predicted values. These deviations may correspond to specific institutions where graduation rates significantly differ from what the model expects, possibly due to unmeasured institutional factors or unique characteristics influencing student success.
+
+The Q-Q plot of residuals compares the empirical quantiles of the residuals to those of a theoretical normal distribution. Most points lie close to the red reference line, suggesting that the residuals are approximately normally distributed in the central range of the data. However, deviations are visible in the upper tail, where residuals systematically diverge from the expected normal pattern. This suggests the presence of extreme values (outliers), which may indicate institutions with unusually high or low graduation rates that the model does not fully explain. 
+
+\begin{center} 
+\includegraphics[width=11cm]{/Users/federicasfeir/Desktop/ACF.pdf} 
+\end{center}
+
+Moreover, the ACF plot was used to assess the presence of autocorrelation in the residuals of the model. Autocorrelation measures whether the residuals at one observation are related to residuals at another observation across lags. Ideally, residuals should not exhibit significant autocorrelation, as this would indicate model misspecification or the presence of unmodeled structure in the data.
+
+We can observe that the first spike at lag 0 represents the correlation of residuals with themselves, which is always equal to 1.
+The spikes at lags greater than 0 are mostly within the blue dashed lines, representing the 95% confidence intervals for no significant autocorrelation. This indicates that the residuals do not exhibit statistically significant autocorrelation at these lags.
+There is no visible systematic pattern (e.g., a cyclical or decaying structure), which further supports the assumption of no significant autocorrelation.
+The ACF plot indicates that the residuals are uncorrelated and independent, supporting the adequacy of the model.
+
+
+
+\textsc{\textbf{Random Effects}}
+
+The first plot displays the histogram of the state-level random effects. The distribution appears to be approximately normal, centered around zero, with most values concentrated between -0.15 and 0.15. The tails are slightly skewed, but overall, the random effects exhibit a symmetric pattern. This suggests that the hierarchical model appropriately captures state-level variability in graduation rates. This supports the model’s assumption of normally distributed random effects. However, some states show more extreme effects, indicating potential differences in state-level factors influencing graduation rates.
+
+\begin{center} 
+\includegraphics[width=12cm]{/Users/federicasfeir/Desktop/histrandom.pdf} 
+\end{center}
+
+The Q-Q plot assesses the normality of the random effects by comparing their quantiles to those of a theoretical normal distribution. Most points align well with the diagonal reference line, supporting the assumption of normally distributed random effects. However, some deviations occur at the tails, particularly in the upper range, where a few states have larger random effects than expected under normality.
+
+\begin{center} 
+\includegraphics[width=12cm]{/Users/federicasfeir/Desktop/qqrandom.pdf} 
+\end{center}
+
+How much variation in graduation rates is explained by states?
+The caterpillar plot provides a detailed visualization of the estimated random effects for each state, ordered by effect size. Each blue point represents the mean random effect for a specific state, while the vertical gray lines indicate the 95% credible intervals for the estimates. This plot is particularly useful for identifying variability among states and evaluating the precision of the random effect estimates.
+
+\begin{center} 
+\includegraphics[width=12cm]{/Users/federicasfeir/Desktop/caterpillar.pdf} 
+\end{center}
+
+From the plot, it is evident that the random effects are approximately symmetrically distributed around zero, which aligns with the assumption of normally distributed state-level effects. States with positive random effects are associated with higher-than-average graduation rates, whereas states with negative random effects are linked to lower-than-average graduation rates. The range of effects vary from approximately -0.3 to +0.3, indicating moderate variability in state-level influences on graduation rates.
+
+The length of the credible intervals ranges across states, reflecting differences in the precision of the estimates. The states with fewer institutions tend to have larger intervals, indicating greater uncertainty in their random effect estimates, while states with a larger number of colleges have closer intervals, demonstrating more precise estimates.
+Additionally, it highlights outliers and extreme cases, where certain states exhibit unusually high or low effects. 
+
+The scatter plot of predicted and observed graduation rates by state shows that some states over-perform relative to model expectations, while others underperform. The red line represents the ideal scenario where predicted values perfectly match observed values ($y=x$).
+We note that states with higher-than-expected graduation rates (above the diagonal line), such as Massachusetts, Connecticut, Rhode Island, Pennsylvania, Washington D.C. tend to have higher educational funding, stronger institutions, and potentially more selective admissions policies.
+While states with lower-than-expected graduation rates (below the diagonal line), such as Alaska, North Dakota, Wyoming, Oklahoma, Utah, Delaware may face systemic educational challenges, underfunding, or socioeconomic barriers impacting student retention.
+
+\begin{center} 
+\includegraphics[width=13cm]{/Users/federicasfeir/Desktop/observed-pred.pdf} 
+\end{center}
+
+However, these plots effectively illustrates the hierarchical structure of the data and emphasizes the importance of accounting for state-level clustering in the model.
+
+
+\textsc{\textbf{Comparative analysis with frequentist inference}}
+
+In this section, we examine and contrast the outcomes of a frequentist mixed-effects linear model (LMM), and the Bayesian mixed-effects model (BMM). While the two models include the same set of predictors, they differ in their key assumptions and approaches to addressing hierarchical structures within the data.
+
+\textsc{Frequentist Linear Mixed-Effects Model}
+
+The linear mixed-effects model (LMM) incorporates a random intercept to account for variability at the state level, acknowledging the hierarchical structure in the data. By allowing intercepts to vary across states, the model improves upon a standard linear model by capturing between-state differences in graduation rates.
+
+The variance between states ( $\sigma_{u}^2$ = 0.05155, Std.Dev. = 0.2271) suggests a moderate level of state-level variability in graduation rates. While there is some impact of state-level factors, a significant portion of the variance is still within institutions.
+The residual variance ( \(\sigma^2\) = 0.89163, Std.Dev. = 0.9443) represents the unexplained variability within institutions. The inclusion of the state-level random effect has slightly improved the model’s fit by accounting for clustering. About 5.5% of the variance in degree rates is explained by differences between states, while the remaining 94.5% is due to variability between institutions.
+
+We note that the significant predictors are Out-of-State Tuition, Student-to-Faculty Ratio, Alumni Donations, Top 10% Students, and Private Institutions. While the Non-significant predictors include Enrollment Size and Faculty Terminal Degree Percentage, indicating that these factors do not have a strong influence on graduation rates in this model.
+
+The overall results suggest that institutional prestige (e.g., tuition and alumni engagement) and student quality (Top 10% students) are key determinants of graduation rates, whereas factors such as enrollment size and faculty credentials have a limited impact.
+
+\begin{verbatim}
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: Grad.Rate.Logit ~ Enroll + Outstate + S.F.Ratio + perc.alumni +  
+#                            Top10perc + Terminal + Private + (1 | state)
+# Data: College
+
+# REML criterion at convergence: 2158.3
+
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -2.3735 -0.5032 -0.1359  0.2855  7.1112 
+
+# Random effects:
+# Groups   Name        Variance Std.Dev.
+#  state    (Intercept) 0.05155  0.2271  
+#  Residual             0.89163  0.9443  
+# Number of obs: 769, groups:  state, 50
+
+# Fixed effects:
+#              Estimate Std. Error t value
+# (Intercept)  0.602732   0.105266   5.726
+# Enroll       0.034485   0.045901   0.751
+# Outstate     0.178992   0.063021   2.840
+# S.F.Ratio    0.094306   0.044236   2.132
+# perc.alumni  0.016020   0.003665   4.371
+# Top10perc    0.414811   0.048759   8.507
+# Terminal    -0.003088   0.003162  -0.977
+# Private      0.257168   0.126552   2.032
+
+# Correlation of Fixed Effects:
+#             (Intr) Enroll Outstt S.F.Rt prc.lm Tp10pr Termnl
+# Enroll      -0.395                                          
+# Outstate     0.431 -0.047                                   
+# S.F.Ratio   -0.113 -0.095  0.245                            
+# perc.alumni  0.117  0.119 -0.180  0.032                     
+# Top10perc   -0.055 -0.240 -0.293  0.164 -0.253              
+# Terminal    -0.253 -0.148 -0.353 -0.024 -0.104 -0.189       
+# Private     -0.873  0.452 -0.467  0.139 -0.127  0.045  0.300
+\end{verbatim}
+
+
+\textsc{Bayesian Mixed-Effects Model}
+
+The Bayesian Mixed-Effects Model (BMM), estimated using JAGS, provides a probabilistic framework for understanding the relationships between predictors and graduation rates while accounting for state-level variability through random effects.
+
+The posterior means for key predictors, such as Outstate Tuition (\(\beta_{2}\) = 0.186, 95\% CI: [0.052, 0.307]) and Top 10\% Students (\(\beta_{5}\) = 0.409, 95\% CI: [0.314, 0.504]), closely align with the estimates from the frequentist linear mixed model (LMM). The credible intervals offer a more informative assessment of uncertainty compared to frequentist confidence intervals, particularly in hierarchical settings.
+
+The random effect variability is reflected in the posterior mean estimate for the state-level standard deviation (\(\sigma_{u}\) = 0.217, 95% CI: [0.100, 0.344]), capturing differences in graduation rates across states. Meanwhile, the residual variability (\(\sigma\) = 0.947, 95% CI: [0.895, 0.996]) suggests that a substantial portion of the variance remains unexplained, emphasizing the role of institutions and student-level factors.
+This aligns with the frequentist LMM, confirming the presence of between-state differences in institutional performance.
+
+However, while the point estimates of variance components are comparable between the two approaches, the Bayesian model provides wider credible intervals, reflecting greater uncertainty quantification in variance estimation. This difference suggests that the Bayesian framework captures more uncertainty in the hierarchical structure of the data, whereas the frequentist LMM relies on asymptotic approximations that may underestimate variance uncertainty, especially with a limited number of groups (states).
+
+The Deviance Information Criterion (DIC = 2141.9) suggests that this Bayesian model provides a strong fit to the data, outperforming the frequentist model (REML = 2158.3) (Restricted Maximum Likelihood) in capturing graduation rate variability. The Bayesian framework further improves interpretability by integrating previous knowledge, quantifying uncertainty and allowing a more appropriate understanding of state-level effects.
+
+These results highlight the importance of institutional and state-level factors in shaping graduation rates. The Bayesian approach, despite being computationally intensive, offers richer insights into hierarchical data structures, providing a flexible and powerful alternative to traditional frequentist models.
+
+\begin{verbatim}
+# Inference for Bugs model at "5", fit using jags,
+#  1 chains, each with 10000 iterations (first 1000 discarded), n.thin = 10
+# n.sims = 900 iterations saved. Running time = 4.628 secs
+#           mu.vect sd.vect     2.5%      25%      50%      75%    97.5%
+# beta0       0.610   0.105    0.407    0.543    0.610    0.680    0.808
+# beta1       0.034   0.047   -0.061    0.005    0.032    0.067    0.120
+# beta2       0.186   0.068    0.052    0.144    0.189    0.235    0.307
+# beta3       0.092   0.044    0.007    0.062    0.092    0.120    0.179
+# beta4       0.016   0.004    0.009    0.014    0.016    0.019    0.023
+# beta5       0.409   0.050    0.314    0.378    0.408    0.443    0.504
+# beta6      -0.003   0.003   -0.009   -0.005   -0.003   -0.001    0.003
+# beta7       0.252   0.129    0.005    0.165    0.253    0.338    0.517
+# sigma       0.947   0.026    0.895    0.929    0.948    0.964    0.996
+# sigma_u     0.217   0.062    0.100    0.176    0.214    0.256    0.344
+# deviance 2097.592  11.477 2076.724 2089.885 2097.099 2104.864 2121.447
+
+# DIC info (using the rule: pV = var(deviance)/2)
+# pV = 44.3 and DIC = 2141.9
+# DIC is an estimate of expected predictive error (lower deviance is better).
+\end{verbatim}
+
+
+\textsc{\textbf{Conclusions}}
+
+The primary objective of this study was to explore the factors influencing graduation rates among U.S. colleges and universities, emphasizing the differences between states. Through a combination of descriptive statistics, frequentist methods, and Bayesian mixed-effects modeling, we analyzed the effects of the predictors at the institution and student level, taking into account the hierarchical structure of the data.
+
+The Bayesian mixed-effects model proved to be a powerful approach for addressing the complexities of the dataset. It incorporated both fixed effects, capturing key predictors like out-of-state tuition, alumni donations, and the percentage of top-performing students, and random effects to account for variability between states. This hierarchical structure allowed for a better understanding of the factors driving graduation rates, particularly the role of institutional characteristics.
+
+In addressing the research question, we conclude that the key findings from the analysis include:
+
+- Institutional Predictors: Out-of-state tuition and alumni engagement emerged as significant predictors of graduation rates, suggesting that financial and reputational factors are critical in shaping student outcomes.
+
+- Student Quality: The proportion of top-performing high school students is strongly associated with higher graduation rates, emphasizing the importance of incoming student preparedness.
+
+The inclusion of random effects for states provided valuable insights into how graduation rates differ across geographic regions. The estimated standard deviation for state-level random effects ($\sigma_{u}$ = 0.217, 95% CI: [0.100, 0.344]) indicated that a moderate proportion of the variance in graduation rates could be attributed to differences between states.
+We also highlighted key state-level disparities. States such as Massachusetts and Connecticut exhibited higher-than-expected graduation rates, potentially due to stronger educational policies, greater funding, or more selective institutions. Conversely, states like Alaska and North Dakota had lower-than-expected graduation rates, which may reflect structural challenges in higher education access and student support services.
+
+The Bayesian mixed-effects model provided a richer probabilistic interpretation of the effects of institutional and student-level predictors while accounting for hierarchical data structures.
+The Deviance Information Criterion (DIC) for the Bayesian model (DIC = 2141.9) was slightly lower than the REML criterion for the frequentist mixed-effects model (REML = 2158.3), indicating a marginally better fit.
+
+This study demonstrates the power of Bayesian mixed-effects models in educational research, particularly for analyzing hierarchical datasets. By incorporating both fixed and random effects, this approach provides a more nuanced understanding of the institutional and regional determinants of graduation rates.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, eval=FALSE}
+
+library(readxl)   
+library(dplyr)    
+library(ggplot2)
+library(usmap)
+
+#Data cleaning
+# Convert Private to a binary variable
+College$Private <- ifelse(College$Private == "Yes", 1, 0)
+
+# Handle missing values
+sum(is.na(College)) # Check for missing values
+College <- na.omit(College) # Remove rows with missing values
+
+# Check for outliers in Grad.Rate
+summary(College$Grad.Rate)
+College[College$Grad.Rate > 100, ]
+College <- College[College$Grad.Rate <= 100, ] 
+# Standardize continuous variables
+# Variables to standardize
+scale_vars <- c("Outstate", "Expend", "S.F.Ratio", "Top10perc", "Top25perc",
+  "Apps", "Accept", "Enroll", "F.Undergrad", "P.Undergrad",
+  "Room.Board", "Books", "Personal"
+)
+
+# Apply standardization
+College[scale_vars] <- scale(College[scale_vars])
+
+#HIST Grad.Rate
+hist(College$Grad.Rate, 
+     breaks = 20, 
+     probability = TRUE, 
+     col = "steelblue", 
+     main = "Distribution of Graduation Rates (%)", 
+     xlab = "Graduation Rate (%)", 
+     border = "black", 
+     xlim = c(0, 120))
+
+curve(dnorm(x, mean = mean(College$Grad.Rate, na.rm = TRUE), 
+            sd = sd(College$Grad.Rate, na.rm = TRUE)), 
+      col = "red", 
+      lwd = 2, 
+      add = TRUE)
+
+
+#Transformation of Grad.Rate
+# Convert Graduation Rate to proportion
+College$Grad.Rate.Prop <- College$Grad.Rate / 100
+epsilon <- 0.001
+College$Grad.Rate.Prop <- pmax(epsilon, pmin(College$Grad.Rate.Prop, 1 - epsilon))
+# Apply logit transformation
+College$Grad.Rate.Logit <- log(College$Grad.Rate.Prop / (1 - College$Grad.Rate.Prop))
+
+#HIST Grad.Rate.Logit
+mean_logit <- mean(College$Grad.Rate.Logit, na.rm = TRUE)
+sd_logit <- sd(College$Grad.Rate.Logit, na.rm = TRUE)
+
+hist(College$Grad.Rate.Logit,
+     breaks = 30,                  
+     probability = TRUE,          
+     main = "Distribution of Logit-Transformed Graduation Rates", 
+     xlab = "Logit(Graduation Rate)", 
+     col = "steelblue",            
+     border = "black")            
+
+curve(dnorm(x, mean = mean_logit, sd = sd_logit),
+      col = "red",                 
+      lwd = 2,                     
+      lty = 2,                     
+      add = TRUE)                  
+
+
+library(ggplot2)
+#Boxplot 
+ggplot(College, aes(x = factor(Private, labels = c("Public", "Private")), y = Grad.Rate)) +
+  geom_boxplot(fill = c("purple", "yellow"), alpha = 0.7) +
+  labs(
+    title = NULL,
+    x = "Institution Type",
+    y = "Graduation Rate (%)"
+  ) +
+  theme_minimal()
+
+
+library(ggcorrplot)
+library(dplyr) 
+table_summary <- College %>%
+  group_by(Private) %>%
+  summarise(
+    Mean_Grad_Rate = mean(Grad.Rate, na.rm = TRUE),
+    Proportion = n() / nrow(College)
+  )
+
+kable(
+  table_summary,
+  col.names = c("Type", "Mean Graduation Rate", "Proportion"),
+  caption = "Mean Graduation Rate and Proportion by College Type"
+)
+
+# correlation matrix for all numeric variables
+cor_matrix <- cor(College[, sapply(College, is.numeric)], use = "complete.obs")
+
+# heatmap
+ggcorrplot(cor_matrix, 
+           method = "square", 
+           lab = FALSE,
+           colors = c("red", "white", "blue"), 
+           title = "Heatmap",
+           hc.order = TRUE) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#MAP
+state_grad_rate <- College %>%
+  group_by(state) %>%
+  summarise(Mean_Grad_Rate = mean(Grad.Rate, na.rm = TRUE))
+
+plot_usmap(data = state_grad_rate, values = "Mean_Grad_Rate", regions = "states") +
+  scale_fill_continuous(name = "Graduation Rate (%)", low = "yellow", high = "red") +
+  labs(title = "Graduation Rate by State in the U.S.") +
+  theme(legend.position = "right")
+
+
+# Create data frame
+df <- data.frame(
+  State = c("New York", "Pennsylvania", "Ohio", "Illinois", "Virginia", 
+            "Massachusetts", "North Carolina", "California", "Texas", "Indiana"),
+  Colleges = c(64, 60, 34, 33, 33, 32, 31, 30, 30, 27)
+)
+# Create bar chart
+ggplot(df, aes(x = reorder(State, Colleges), y = Colleges)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 States with the Highest Number of Colleges",
+       x = "State",
+       y = "Number of Colleges") +
+  theme_minimal()
+
+
+
+
+#####
+library(knitr)
+library(ggplot2)
+library(mice)
+library(patchwork)
+library(tidyr)
+library(rjags)
+library(R2jags)
+library(coda)
+library(lme4)
+library(readr)
+# Center the continuous predictors
+College$Expend <- as.vector(scale(College$Expend, center = TRUE, scale = FALSE))
+College$Outstate <- as.vector(scale(College$Outstate, center = TRUE, scale = FALSE))
+College$S.F.Ratio <- as.vector(scale(College$S.F.Ratio, center = TRUE, scale = FALSE))
+College$perc.alumni <- as.vector(scale(College$perc.alumni, center = TRUE, scale = FALSE))
+College$Top10perc <- as.vector(scale(College$Top10perc, center = TRUE, scale = FALSE))
+College$Terminal <- as.vector(scale(College$Terminal, center = TRUE, scale = FALSE))
+College$F.Undergrad <- as.vector(scale(College$F.Undergrad, center = TRUE, scale = FALSE))
+College$Books <- as.vector(scale(College$Books, center = TRUE, scale = FALSE))
+College$Personal <- as.vector(scale(College$Personal, center = TRUE, scale = FALSE))
+College$Enroll <- as.vector(scale(College$Enroll, center = TRUE, scale = FALSE))
+
+# data1 for JAGS 
+jags_data1 <- list(
+  y = College$Grad.Rate.Logit,  # Logit-transformed graduation rate
+  state = as.numeric(as.factor(College$state)),  # State as grouping variable
+  N = nrow(College),  # Number of colleges
+  J = length(unique(College$state))  # Number of unique states (random effect)
+)
+
+model_code1 <- "
+model {
+  for (i in 1:N) {
+    # Likelihood
+    y[i] ~ dnorm(mu[i], tau) # Normal likelihood with precision tau
+    mu[i] <- beta0 + u_state[state[i]] # Random intercept for states
+
+    #posterior predictive samples for y, helping assess model fit.
+    yrep[i] ~ dnorm(mu[i], tau) # Posterior predictions for y
+  }
+  
+  # Random effects for states
+  for (j in 1:J) {
+    u_state[j] ~ dnorm(0, tau_u)
+  }
+  
+  # Prior for intercept
+  beta0 ~ dnorm(0, 0.001)
+  
+  # Priors for variances
+  tau ~ dgamma(0.001, 0.001)
+  sigma <- 1 / sqrt(tau)
+
+  tau_u ~ dgamma(0.001, 0.001) # Random effect precision
+  sigma_u <- 1 / sqrt(tau_u) # Standard deviation for state-level variation
+}
+"
+
+params1 <- c("beta0", "sigma", "sigma_u")
+
+set.seed(123)
+jags_model1 <- jags(
+  data = jags_data1,
+  parameters.to.save = params1,
+  model.file = textConnection(model_code1),
+  n.chains = 1, # Number of chains
+  n.iter = 10000, # Total iterations
+  n.burnin = 1000, # Burn-in iterations
+  n.thin = 10, # Thinning factor
+  DIC = TRUE # Calculate DIC for model comparison
+)
+
+
+# data2 for JAGS 
+jags_data2 <- list(
+  y = College$Grad.Rate.Logit,   #outcome
+  x1 = College$Enroll,     #predictor 1
+  x2 = College$Outstate,   #predictor 2
+  x3 = College$S.F.Ratio,  #predictor 3
+  state = as.numeric(as.factor(College$state)),  # State as grouping variable
+  N = nrow(College),   #number of college
+  J = length(unique(College$state))    # Number of unique states (random effect)
+)
+
+
+model_code2 <- "
+model {
+  for (i in 1:N) {
+    # Likelihood
+    y[i] ~ dnorm(mu[i], tau) # Normal likelihood with precision tau
+    mu[i] <- beta0 + beta1 * x1[i] + beta2 * x2[i] + beta3 * x3[i] 
+             + u_state[state[i]]
+
+    # Posterior predictive distribution
+    yrep[i] ~ dnorm(mu[i], tau) # Posterior predictions for y
+  }
+  
+  # Random effects for states
+  for (j in 1:J) {
+    u_state[j] ~ dnorm(0, tau_u)
+  }
+
+  # Priors for fixed effects
+  beta0 ~ dnorm(0, 0.001)
+  beta1 ~ dnorm(0, 0.001)
+  beta2 ~ dnorm(0, 0.001)
+  beta3 ~ dnorm(0, 0.001)
+
+  # Priors for variances
+  tau ~ dgamma(0.001, 0.001)
+  sigma <- 1 / sqrt(tau)
+
+  tau_u ~ dgamma(0.001, 0.001) # Random effect precision
+  sigma_u <- 1 / sqrt(tau_u) # Standard deviation for state-level variation
+}
+"
+
+# Parameters to monitor
+params2 <- c("beta0", "beta1", "beta2", "beta3", "sigma", "sigma_u")
+
+# Run the JAGS model2
+set.seed(123) 
+jags_model2 <- jags(
+data = jags_data2,
+parameters.to.save = params2,
+model.file = textConnection(model_code2),
+n.chains = 1, # Number of chains
+n.iter = 10000, # Total iterations
+n.burnin = 1000, # Burn-in iterations
+n.thin = 10, # Thinning factor
+DIC = TRUE # Calculate DIC for model comparison
+)
+
+
+# Data for JAGS Model 3
+
+# Prepare data for JAGS
+jags_data3 <- list(
+  y = College$Grad.Rate.Logit,   # Logit-transformed graduation rate
+  x1 = College$Enroll,           # Predictor 1: Number of new students enrolled
+  x2 = College$Outstate,         # Predictor 2: Out-of-state tuition
+  x3 = College$S.F.Ratio,        # Predictor 3: Student-to-faculty ratio
+  x4 = College$perc.alumni,      # Predictor 4: Percentage of alumni donations
+  x5 = College$Top10perc,        # Predictor 5: Percentage of top 10% students
+  x6 = College$Terminal,         # Predictor 6: Percentage of faculty with terminal degrees
+  x7 = as.numeric(College$Private), # Predictor 7: Private (1 = Private, 0 = Public)
+  state = as.numeric(as.factor(College$state)),  # State as grouping variable
+  N = nrow(College),   # Number of colleges
+  J = length(unique(College$state))  # Number of unique states (random effect)
+)
+
+# Define JAGS Model
+model_code3 <- "
+model {
+  for (i in 1:N) {
+    # Likelihood
+    y[i] ~ dnorm(mu[i], tau) # Normal likelihood with precision tau
+    mu[i] <- beta0 + beta1 * x1[i] + beta2 * x2[i] + beta3 * x3[i] +
+             beta4 * x4[i] + beta5 * x5[i] + beta6 * x6[i] + beta7 * x7[i] +
+             u_state[state[i]]
+
+    # Posterior predictive distribution
+    yrep[i] ~ dnorm(mu[i], tau) #Posterior predictions for y
+  }
+  
+  # Random effects for states
+  for (j in 1:J) {
+    u_state[j] ~ dnorm(0, tau_u)
+  }
+
+  # Priors for fixed effects
+  beta0 ~ dnorm(0, 0.001)
+  beta1 ~ dnorm(0, 0.001)
+  beta2 ~ dnorm(0, 0.001)
+  beta3 ~ dnorm(0, 0.001)
+  beta4 ~ dnorm(0, 0.001)
+  beta5 ~ dnorm(0, 0.001)
+  beta6 ~ dnorm(0, 0.001)
+  beta7 ~ dnorm(0, 0.001) 
+
+  # Priors for variances
+  tau ~ dgamma(0.001, 0.001)  
+  sigma <- 1 / sqrt(tau)      
+
+  tau_u ~ dgamma(0.001, 0.001) 
+  sigma_u <- 1 / sqrt(tau_u) 
+}
+"
+
+#parameters to monitor posterior distributions
+params3 <- c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5", "beta6",
+             "beta7", "sigma", "sigma_u")
+
+#JAGS Model 3
+set.seed(123)
+jags_model3 <- jags(
+  data = jags_data3,
+  parameters.to.save = params3,
+  model.file = textConnection(model_code3),
+  n.chains = 1, # Number of chains
+  n.iter = 10000, # Total iterations
+  n.burnin = 1000, # Burn-in iterations
+  n.thin = 10, # Thinning factor
+  DIC = TRUE # Calculate DIC for model comparison
+)
+
+
+# data for JAGS 4
+jags_data4 <- list(
+  y = College$Grad.Rate.Logit,   
+  x1 = College$Enroll,           
+  x2 = College$Outstate,         
+  x3 = College$S.F.Ratio,        
+  x4 = College$perc.alumni,      
+  x5 = College$Top10perc,        
+  x6 = College$Terminal,         
+  x7 = as.numeric(College$Private),  
+  N = nrow(College)   
+)
+
+# Define JAGS Model (Fixed Effects Only)
+model_code4 <- "
+model {
+  for (i in 1:N) {
+    # Likelihood
+    y[i] ~ dnorm(mu[i], tau) 
+    mu[i] <- beta0 + beta1 * x1[i] + beta2 * x2[i] + beta3 * x3[i] +
+             beta4 * x4[i] + beta5 * x5[i] + beta6 * x6[i] + beta7 * x7[i]
+
+    # Posterior predictive distribution
+    yrep[i] ~ dnorm(mu[i], tau) # Posterior predictions for y
+  }
+
+  # Priors for fixed effects
+  beta0 ~ dnorm(0, 0.001)
+  beta1 ~ dnorm(0, 0.001)
+  beta2 ~ dnorm(0, 0.001)
+  beta3 ~ dnorm(0, 0.001)
+  beta4 ~ dnorm(0, 0.001)
+  beta5 ~ dnorm(0, 0.001)
+  beta6 ~ dnorm(0, 0.001)
+  beta7 ~ dnorm(0, 0.001) 
+
+  # Prior for variance
+  tau ~ dgamma(0.001, 0.001)
+  sigma <- 1 / sqrt(tau)
+}
+"
+
+# Parameters to monitor
+params4 <- c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5", "beta6", 
+             "beta7", "sigma")
+
+# Run JAGS Model
+set.seed(123)
+jags_model4 <- jags(
+  data = jags_data4,
+  parameters.to.save = params4,
+  model.file = textConnection(model_code4),
+  n.chains = 1, # Number of chains
+  n.iter = 10000, # Total iterations
+  n.burnin = 1000, # Burn-in iterations
+  n.thin = 10, # Thinning factor
+  DIC = TRUE # Calculate DIC for model comparison
+)
+
+
+# DIC
+dic_values <- c(
+model1 = jags_model1$BUGSoutput$DIC,
+model2 = jags_model2$BUGSoutput$DIC,
+model3 = jags_model3$BUGSoutput$DIC,
+model4 = jags_model4$BUGSoutput$DIC)
+dic_table <- data.frame( Model = names(dic_values), 
+                         DIC = as.numeric(dic_values))
+kable(dic_table, caption = "DIC Values")
+
+#model3
+print(jags_model3)
+
+
+
+#DIAGNOSTIC
+# Define parameters to monitor
+params3diag <- c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5",
+             "beta6", "beta7", "sigma", "sigma_u", "yrep", "mu", "u_state")
+
+# Run JAGS Model 3
+set.seed(123)
+jags_model3diag <- jags(
+  data = jags_data3,
+  parameters.to.save = params3diag,
+  model.file = textConnection(model_code3),
+  n.chains = 1,  # Number of chains
+  n.iter = 10000,  # Total iterations
+  n.burnin = 1000,  # Burn-in iterations
+  n.thin = 10,  # Thinning factor
+  DIC = TRUE  # Calculate DIC for model comparison
+)
+
+# TRACEPOLOTS FOR CONVERGENCE
+mcmc_samples <- as.mcmc(jags_model3diag$BUGSoutput$sims.matrix)
+par(mfrow=c(2,4))
+traceplot(mcmc_samples[, c("beta0", "beta1", "beta2", "beta3",
+                           "beta4", "beta5", "beta6", "beta7")])
+# EFFECTIVE SAMPLE SIZE (ESS)
+head(effectiveSize(mcmc_samples), 10) # Show the first 10 rows
+
+ #POSTERIOR PREDICTIVE CHECK
+# Extract posterior predictive samples
+posterior_pred <- jags_model3diag$BUGSoutput$sims.list$yrep
+observed <- jags_data3$y
+# histogram for observed data
+hist(observed, breaks = 30, col = rgb(0, 0, 1, 0.5), prob = TRUE,
+     main = "Posterior Predictive",
+     xlab = "Observed Graduation Rates (Logit)")
+lines(density(as.vector(posterior_pred)), col = "red", lwd = 2, lty=2)
+legend("topright", legend = c("Observed", "Posterior Predictive"), 
+       col = c("blue", "red"), lwd = 2, bty = "n")
+
+
+
+#DIAGNOSTIC RESIDUALS
+fitted_values <- jags_model3diag$BUGSoutput$sims.list$mu  #predicted values
+residuals <- observed - colMeans(fitted_values)           
+
+# Residuals vs. Predicted values
+par(mfrow = c(1, 2))
+plot(colMeans(fitted_values), residuals,
+     main = "Residuals vs. Fitted Values",
+     xlab = "Predicted Values",
+     ylab = "Residuals",
+     pch = 16, col = "blue")
+abline(h = 0, col = "red", lwd = 2)
+
+# Q-Q Plot 
+qqnorm(residuals, main = "Q-Q Plot of Residuals")
+qqline(residuals, col = "red", lwd=2)
+par(mfrow = c(1, 1))
+
+# Hist residuals
+hist(residuals, breaks = 30, col = "lightblue",
+     main = "Histogram of Residuals",
+     xlab = "Residuals", prob = TRUE)
+lines(density(residuals), col = "red", lwd = 2)
+
+# Autocorrelation
+acf(residuals, main = "ACF of Residuals", col = "blue")
+         
+
+
+# RANDOM EFFECTS
+# Hist
+random_effects <- apply(jags_model3diag$BUGSoutput$sims.list$u_state, 2 ,mean)
+#This object contains the MCMC chains for random effects (u_state) generated 
+#during the Bayesian estimation. It is an array in which the rows represent the 
+#iterations of the MCMC chain and the columns represent the groups ( states).
+
+hist(random_effects, 
+     breaks = 20, 
+     col = "blue",  
+     prob = TRUE,  
+     main = "Histogram and Density of Random Effects",
+     xlab = "Random Effects (State-Level)")
+
+# Q-Q plot
+qqnorm(random_effects)  # Q-Q plot
+qqline(random_effects, col = "red", lwd = 2)  
+
+
+# Caterpillar
+# Extract random effects means and credible intervals
+random_effects <- apply(jags_model3diag$BUGSoutput$sims.list$u_state, 2 ,mean)
+lower_bounds <- apply(jags_model3diag$BUGSoutput$sims.list$u_state, 2,
+                      function(x) quantile(x, 0.025)) # 2.5% quantile 
+upper_bounds <- apply(jags_model3diag$BUGSoutput$sims.list$u_state, 2,
+                      function(x) quantile(x, 0.975)) # 97.5% quantile
+
+random_effects_df <- data.frame( 
+  State = 1:length(random_effects), 
+  Effect = random_effects,
+  Lower = lower_bounds,
+  Upper = upper_bounds
+)
+
+# Order the states by effect size
+random_effects_df <- random_effects_df[order(random_effects_df$Effect), ]
+random_effects_df$State <- 1:nrow(random_effects_df)  
+
+library(ggplot2)
+ggplot(random_effects_df, aes(x = State, y = Effect)) +
+geom_point(color = "blue") +
+geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2, color = "gray") + 
+  labs(
+    title = "Caterpillar Plot of State-Level Random Effects",
+    x = "State (Ordered by Effect Size)",
+    y = "Random Effect"
+    ) + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14), 
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10)
+)
+
+#Bayesian Posterior Predictive Checks at the State Level
+y_pred <- apply(jags_model3diag$BUGSoutput$sims.list$yrep, 2, mean)
+state_means <- aggregate(y_pred, by = list(College$state), FUN = mean)
+colnames(state_means) <- c("State", "Pred_GradRate")
+
+actual_means <- aggregate(College$Grad.Rate.Logit, by = list(College$state), FUN = mean)
+colnames(actual_means) <- c("State", "Actual_GradRate")
+
+comparison <- merge(state_means, actual_means, by = "State")
+ggplot(comparison, aes(x = Actual_GradRate, y = Pred_GradRate, label = State)) +
+  geom_point() +
+  geom_text(vjust = -0.5) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Predicted vs. Observed Graduation Rates by State", x = "Observed", y = "Predicted") +
+  theme_minimal()
+
+#FREQUENTIST / BAYESIAN
+# Frequentist mixed-effects
+library(lme4)
+frequentist_model <- lmer(Grad.Rate.Logit ~ Enroll + Outstate + S.F.Ratio + 
+                            perc.alumni + Top10perc + Terminal + Private + 
+                            (1 | state), data = College)
+summary(frequentist_model)
+
+# JAGS " (Model 3)
+print("Bayesian mixed-effects model summary:") 
+print(jags_model3)    
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+``` 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, include=FALSE, include=FALSE, warning=FALSE}
+
+options(width=50)
+opts_chunk$set(out.lines = 23, comment = "", warning = FALSE, message = FALSE, echo = TRUE, tidy = TRUE, size="small",tidy.opts=list(width.cutoff=50), fig.align = 'center', fig.width = 5, fig.height = 4)
+```
+
+```{r,echo=FALSE}
+#load("Day1.RData")
+```
+
+<font color="#FF0000"></font>
+
+
+## \textsc{}
+
+
+
+\color{black}
+* * *
+  <div class="footer"> &copy; 2024-2025 - Bayesian Modelling 2024-2025 </div>
+```{r, warning=FALSE, error=FALSE, message=FALSE, echo=FALSE}
+cat(paste("Last update by CM+LT:",date()))
+```
