@@ -9,3 +9,6 @@ Scripts in R for data management, visualization and analysis. In this project we
 ## Tools
 - R, RMarkdown
 - Packages: `dplyr`, `ggplot2`, `ggcorrplot`, `lme4`, `rjags`, `R2jags
+
+## 📄 Full Report
+The complete analysis is available in [project1.pdf](docs/project1.pdf).
