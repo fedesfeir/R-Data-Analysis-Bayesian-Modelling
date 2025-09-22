@@ -2,6 +2,8 @@ library(readxl)
 library(dplyr)    
 library(ggplot2)
 library(usmap)
+library("ISLR2")
+data("College")
 
 #Data cleaning
 # Convert Private to a binary variable
